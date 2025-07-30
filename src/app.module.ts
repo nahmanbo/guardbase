@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { ShiftsModule } from './shifts/shifts.module';
+import { AssignmentsModule } from './assignments/assignments.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ShiftsModule } from './shifts/shifts.module';
     }),
     UsersModule,
     ShiftsModule,
+    AssignmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
