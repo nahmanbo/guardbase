@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { CreateUserDto } from './dto/create-user.dto';
-import { LoginUserDto } from './dto/login-user.dto';
 import { User } from './user.entity';
 
 @Injectable()
@@ -31,23 +30,8 @@ export class UsersService {
     }
   }
 
-  // Authenticates a user by verifying credentials
-  async login(dto: LoginUserDto): 
-  Promise<{ success: true; user: User } | { success: false; error: string }> {
-    const user = await this.repo.findOneBy({ email: dto.email });
-    if (!user)
-      return { success: false, error: 'User not found' };
-
-    const match = await bcrypt.compare(dto.password, user.password);
-    if (!match)
-      return { success: false, error: 'Invalid credentials' };
-
-    return { success: true, user };
-  }
-
   // Finds user by email
-async findByEmail(email: string): Promise<User | null> {
-  return await this.repo.findOneBy({ email });
-}
-
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.repo.findOneBy({ email });
+  }
 }
