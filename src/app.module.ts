@@ -6,13 +6,15 @@ import { UsersModule } from './users/users.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { AuthModule } from './auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
+import { RolesGuard } from './auth/roles.guard';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DB_HOST,
-      port: +process.env.DB_PORT!, 
+      port: +process.env.DB_PORT!,
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
@@ -25,6 +27,12 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule {}
