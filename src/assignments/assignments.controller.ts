@@ -1,42 +1,58 @@
 import {
-  Controller, Get, Post, Body, Param, Delete, UseGuards, Req
+  Controller, Get, Post, Patch, Delete, Param, Body,
+  UseGuards, ParseIntPipe, Req
 } from '@nestjs/common';
 import { AssignmentsService } from './assignments.service';
-import { Role } from '../auth/role.decorator';
+import { CreateAssignmentDto } from './dto/create-assignment.dto';
+import { UpdateAssignmentDto } from './dto/update-assignment.dto';
+import { Roles } from '../auth/role.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-import { Request } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('assignments')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class AssignmentsController {
-  constructor(private readonly assignmentsService: AssignmentsService) {}
+  constructor(private readonly service: AssignmentsService) {}
 
-  // Creates a new assignment (commander only)
+  // Create new assignment (commander or admin only)
   @Post()
-  @UseGuards(RolesGuard)
-  @Role('commander')
-  create(@Body() dto: { userId: number, shiftId: number }) {
-    return this.assignmentsService.create(dto);
+  @Roles('commander', 'admin')
+  create(@Body() dto: CreateAssignmentDto) {
+    return this.service.create(dto);
   }
 
-  // Gets all assignments (commander only)
+  // Get all assignments (commander or admin only)
   @Get()
-  @UseGuards(RolesGuard)
-  @Role('commander')
+  @Roles('commander', 'admin')
   findAll() {
-    return this.assignmentsService.findAll();
+    return this.service.findAll();
   }
 
-  // Gets assignments for current user
-  @Get('me')
-  getMyAssignments(@Req() req: Request) {
-    return this.assignmentsService.findByUserId(req.user.id);
+  // Get my assignments (soldier only)
+  @Get('my')
+  @Roles('soldier')
+  findMine(@Req() req) {
+    return this.service.findByUserId(req.user.userId);
   }
 
-  // Deletes assignment (commander only)
+  // Get specific assignment by ID (commander or admin only)
+  @Get(':id')
+  @Roles('commander', 'admin')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findById(id);
+  }
+
+  // Update assignment (commander or admin only)
+  @Patch(':id')
+  @Roles('commander', 'admin')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAssignmentDto) {
+    return this.service.update(id, dto);
+  }
+
+  // Delete assignment (admin only)
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Role('commander')
-  remove(@Param('id') id: number) {
-    return this.assignmentsService.remove(id);
+  @Roles('admin')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
   }
 }

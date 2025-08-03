@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Assignment } from './assignment.entity';
@@ -12,84 +12,49 @@ export class AssignmentsService {
   constructor(
     @InjectRepository(Assignment)
     private readonly repo: Repository<Assignment>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(Shift)
-    private readonly shiftRepo: Repository<Shift>,
   ) {}
 
-  // Creates a new assignment (commander only)
-  async create(dto: CreateAssignmentDto, user: User) {
-    if (user.role !== 'commander')
-      return { success: false, error: 'Only commanders can create assignments' };
-
-    const assignedUser = await this.userRepo.findOneBy({ id: dto.userId });
-    const shift = await this.shiftRepo.findOneBy({ id: dto.shiftId });
-
-    if (!assignedUser || !shift)
-      return { success: false, error: 'User or shift not found' };
-
-    const assignment = this.repo.create({ user: assignedUser, shift });
+  async create(dto: CreateAssignmentDto) {
+    const assignment = this.repo.create({
+      user: { id: dto.userId } as User,
+      shift: { id: dto.shiftId } as Shift,
+    });
     const saved = await this.repo.save(assignment);
     return { success: true, data: saved };
   }
 
-  // Returns all assignments (commander sees all, soldier only own)
-  async findAll(user: User) {
-    if (user.role === 'commander') {
-      const all = await this.repo.find({ relations: ['user', 'shift'] });
-      return { success: true, data: all };
-    }
-    const mine = await this.repo.find({ where: { user: { id: user.id } }, relations: ['user', 'shift'] });
-    return { success: true, data: mine };
+  async findAll() {
+    return this.repo.find({ relations: ['user', 'shift'] });
   }
 
-  // Returns one assignment by ID (only if allowed)
-  async findOne(id: number, user: User) {
-    const assignment = await this.repo.findOne({ where: { id }, relations: ['user', 'shift'] });
-    if (!assignment)
-      return { success: false, error: 'Assignment not found' };
-
-    if (user.role === 'soldier' && assignment.user.id !== user.id)
-      return { success: false, error: 'Access denied' };
-
-    return { success: true, data: assignment };
+  async findByUserId(userId: number) {
+    return this.repo.find({
+      where: { user: { id: userId } },
+      relations: ['user', 'shift'],
+    });
   }
 
-  // Updates an assignment (commander only)
-  async update(id: number, dto: UpdateAssignmentDto, user: User) {
-    if (user.role !== 'commander')
-      return { success: false, error: 'Only commanders can update assignments' };
+  async findById(id: number) {
+    const found = await this.repo.findOne({
+      where: { id },
+      relations: ['user', 'shift'],
+    });
+    if (!found) throw new NotFoundException('Assignment not found');
+    return found;
+  }
 
-    const assignment = await this.repo.findOne({ where: { id }, relations: ['user', 'shift'] });
-    if (!assignment)
-      return { success: false, error: 'Assignment not found' };
+  async update(id: number, dto: UpdateAssignmentDto) {
+    const assignment = await this.findById(id);
 
-    if (dto.userId) {
-      const newUser = await this.userRepo.findOneBy({ id: dto.userId });
-      if (!newUser) return { success: false, error: 'User not found' };
-      assignment.user = newUser;
-    }
-
-    if (dto.shiftId) {
-      const newShift = await this.shiftRepo.findOneBy({ id: dto.shiftId });
-      if (!newShift) return { success: false, error: 'Shift not found' };
-      assignment.shift = newShift;
-    }
+    if (dto.userId) assignment.user = { id: dto.userId } as User;
+    if (dto.shiftId) assignment.shift = { id: dto.shiftId } as Shift;
 
     const saved = await this.repo.save(assignment);
     return { success: true, data: saved };
   }
 
-  // Deletes an assignment (commander only)
-  async remove(id: number, user: User) {
-    if (user.role !== 'commander')
-      return { success: false, error: 'Only commanders can delete assignments' };
-
-    const assignment = await this.repo.findOneBy({ id });
-    if (!assignment)
-      return { success: false, error: 'Assignment not found' };
-
+  async remove(id: number) {
+    const assignment = await this.findById(id);
     await this.repo.remove(assignment);
     return { success: true };
   }
