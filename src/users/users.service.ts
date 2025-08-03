@@ -44,4 +44,10 @@ export class UsersService {
 
     return { success: true, user };
   }
+
+  // Finds user by email
+async findByEmail(email: string): Promise<User | null> {
+  return await this.repo.findOneBy({ email });
+}
+
 }
