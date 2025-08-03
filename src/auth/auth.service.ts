@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
+
+import { UsersService } from '../users/users.service';
+import { LoginUserDto } from '../users/dto/login-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -10,18 +12,19 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // Validates user credentials and returns JWT if successful
-  async login(email: string, password: string): 
+  // Validates user credentials and returns JWT token
+  async login(dto: LoginUserDto): 
   Promise<{ success: true; token: string } | { success: false; error: string }> {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) return { success: false, error: 'Invalid email or password' };
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user)
+      return { success: false, error: 'User not found' };
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) return { success: false, error: 'Invalid email or password' };
+    const match = await bcrypt.compare(dto.password, user.password);
+    if (!match)
+      return { success: false, error: 'Invalid credentials' };
 
     const payload = { sub: user.id, role: user.role };
-    const token = this.jwtService.sign(payload);
-
+    const token = await this.jwtService.signAsync(payload);
     return { success: true, token };
   }
 }
