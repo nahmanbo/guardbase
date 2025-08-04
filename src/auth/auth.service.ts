@@ -23,7 +23,11 @@ export class AuthService {
     if (!match)
       return { success: false, error: 'Invalid credentials' };
 
-    const payload = { sub: user.id, role: user.role };
+    const payload = {
+      sub: user.id,
+      name: user.name,   
+      role: user.role,
+    };
     const token = await this.jwtService.signAsync(payload);
     return { success: true, token };
   }
