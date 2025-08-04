@@ -1,23 +1,24 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
-  // Checks if the user's role matches any of the required roles from @Roles
+  // check if user role matches route's required roles
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: { role?: string } }>();
+
     const user = request.user;
+    const roles = this.reflector.getAllAndOverride<string[]>('roles', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (!user) throw new UnauthorizedException('Missing or invalid token');
-
-    const requiredRoles = this.reflector.get<string[]>('roles', context.getHandler());
-    if (!requiredRoles || requiredRoles.length === 0) return true;
-
-    if (!requiredRoles.includes(user.role))
-      throw new ForbiddenException(`Access denied for role: ${user.role}`);
-
-    return true;
+    if (!roles || !user?.role) return false;
+    return roles.includes(user.role);
   }
 }
